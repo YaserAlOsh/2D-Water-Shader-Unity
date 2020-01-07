@@ -173,7 +173,7 @@
 				//طبق اللون على الصورة
 				float3 rgb = albedo.rgb * _Color.rgb;
 				return float4(rgb, _Color.a);
-			}
+			} 
 
 			ENDCG
 		}
