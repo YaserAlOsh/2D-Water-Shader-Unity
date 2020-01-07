@@ -14,8 +14,7 @@ public class WaterSplash : MonoBehaviour
     [Tooltip("How much time should the hit of an object onto the water take till settling. Changes based on the object's speed")]
     [SerializeField]
     float hitMinimumTime, hitMaximumTime;
-    //السرعة الأدنى التي بعدها تبدأ الأجسام الواقعة في الماء في تسبب موجات
-    //والسرعة القصوى التي عندها تتسب الأجسام بأقوى موجة ممكن
+
     [Tooltip("The minimum speed of rigidbodies falling on water that causes splashes. And the speed which causes maximum hit effect")]
     [SerializeField]
     float objSpeedMinHit, objSpeedMaxHit;
@@ -27,10 +26,6 @@ public class WaterSplash : MonoBehaviour
     [Tooltip("The name of the array set in the shader")]
     [SerializeField]
     string splashesVectorArrayName = "SplashesArray";
-    //أقصى عدد ممكن من الأمواج في الوقت نفسه
-    //Shader
-    
-    يجب أن يكون أقل من أو يساوي المصفوفة في  الـ
     [Tooltip("The maximum count of splashes occuring at the same time. Should be less than or equal to the number set in the shader")]
     [SerializeField]
     
