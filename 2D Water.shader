@@ -1,4 +1,4 @@
-﻿Shader "Custom/2D Water Arabic Comments"
+Shader "Custom/2D Water Arabic Comments"
 {
     Properties
     {
