@@ -12,3 +12,10 @@ Works best with a plane mesh. Polycount of the plane need to be adjusted to matc
 OnTriggerEnter2D
 
 يفضل استخدامه مع جسم سطح مستوي. عدد مضلعات السطح المستوي يجب أن يتم اختياره بما يناسب مشروعكم.
+
+Preview:
+
+https://drive.google.com/file/d/12lJn8gMSaxNB5rnoK0dGKNaghL5sKHHC/view?usp=sharing
+
+![preview](https://github.com/YaserAlOsh/2D-Water-Shader-Unity/blob/master/Water-Shader-Preview.gif)
+
