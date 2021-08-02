@@ -183,6 +183,11 @@ public class WaterSplash : MonoBehaviour
         splashInfo.period = resultantHitTime * hitEffectTimePercentage;
         //Set the position of the splash hit
         splashesVector[currentEmptyIndex].x = xAxis;
+        //For the new model:
+        //The z value will be used for shifting the wave. 0 is no shift and 1 is maximum shift
+        splashesVector[currentEmptyIndex].z = 0;
+        //Custom timer. Starts from 0 to make sure the wave always starts in the upward direction
+        splashesVector[currentEmptyIndex].w = 0;
         // Update the array in the material
         MaterialPropertyBlock materialPropertyBlock = new MaterialPropertyBlock();
         materialPropertyBlock.SetVectorArray(splashesVectorArrayName, splashesVector);
