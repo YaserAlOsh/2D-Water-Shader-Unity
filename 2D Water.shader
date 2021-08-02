@@ -13,10 +13,9 @@ Shader "Custom/2D Water"
 	_WaveB("Wave Properties",Vector) = (1,1,1)
 	//موجة أخرى إضافية
 	_WaveC("Wave Properties",Vector) = (1,1,1)
-	//موجة تفعل فقط عند حدوث اصطدام مع الماء من قبل جسم ماءء
-	_WaveSplash("Wave Splash (Length, Speed, Steepness)",Vector) = (1,1,1)
-	//موجة اصطدام إضافية
-	_WaveSplashB("Wave Splash B (",Vector) = (1,1,1)
+	//موجة تفعل فقط عند حدوث اصطدام مع الماء من قبل جسم ما
+	//..................... امتداد الموجة ، ارتفاع الموجة ، سرعة التقلب ، التردد
+	_WaveSplash("Wave Splash (Frequency, Speed, Amplitude, Distance)",Vector) = (1,1,1)
 	//مدى تمدد موجات الاصطدام
 	_hitEffectSpread("Hit Spread (0.001 means maximum spread)", Range(0.001,1)) = 0.25 
     }
@@ -98,8 +97,9 @@ Shader "Custom/2D Water"
 			
 			return float3(0,_point.y,0);
 		}
-		float3 Wave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
-			//كل شيء هنا مماقل للدالة السابقة
+		//هذه دالة قديمة لحساب الموجة عند الاصطدام
+		float3 OldWave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
+			//كل شيء هنا مماثل للدالة السابقة
 			float frequency = 2 * PI / waveProp.x; //x is waveLength
 			float factor = frequency * (_point.x  - waveProp.y * _Time.y);//y is waveSpeed
 			float amplitude = waveProp.z / frequency;//Steepness over frequency
@@ -112,6 +112,35 @@ Shader "Custom/2D Water"
 			//نضرب قيمة التأثير بالارتفاع وبدالة الجيب
 			_point.y = splashEffect * amplitude * sin(factor);//z is Steepness
 
+			return float3(0,_point.y,0);
+		}
+		//سنستخدم نموذج أفضل لتأثير الاصطدام
+		//انظر الرابط الآتي لفهم آلية عمل النموذج  https://www.desmos.com/calculator/cmn5i7veni
+		float3 Wave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
+			//zارتفاع الموجة محفوظ في قيمة ال
+			float amplitude = waveProp.z;
+			//نحسب المسافة بين موقع الاصطدام والرأس الحالي
+			float dist = abs(hitProp.x - _point.x);
+			//الزمن هنا نحصل عليه من معلومات الاصطدام. نستخدمه لتبدأ الموجة عند الزمن 0 دائما
+			float time = hitProp.w;
+			//wأقصى مسافة تمتدها الموجة محفوظ في ال 
+			//وحركة الموجة الحالية (كقيمة بين ال0 و 1) محفوظ في معلومات الاصطدام
+			float waveDist = hitProp.z * waveProp.w;//بضربهما ببعض نحصل على امتداد الموجة الحالي (بتعبير آخر, موقع بؤرة الموجة الحالي)
+			//نحسب الفرق بين بؤرة الموجة والمسافة
+			float shiftedDist = dist - waveDist;
+			//cosنحسب قيمة ال..
+			// كجزء من صيغة الموجة..
+			float cosValue = cos(shiftedDist*waveProp.x  -  waveProp.y * time);
+			//جزء الموجة الأول
+			_point.y =  amplitude * cosValue //يمكن الضرب بقيمة جيب التمام مرة أخرى للحصول على موجة بدون هبوط (أو حفر)
+				* hitProp.y / (_hitEffectSpread * shiftedDist * shiftedDist + 1);
+			//حساب الموقع من منظور جهة اليسار
+			shiftedDist = dist + waveDist;
+			cosValue = cos(shiftedDist*waveProp.x +  waveProp.y * time);
+			//إضافة جزء الموجة الثانية
+			_point.y += amplitude * cosValue //يمكن الضرب بقيمة جيب التمام مرة أخرى للحصول على موجة بدون هبوط (أو حفر)
+					* hitProp.y / (_hitEffectSpread * shiftedDist * shiftedDist + 1);
+			_point.y /= 2;//نقسم ارتفاع الموجة على 2. لأننا نقوم بجمع موجتين من الارتفاع نفسه. وهكذا نحصل على الارتفاع الأصلي
 			return float3(0,_point.y,0);
 		}
 
@@ -141,21 +170,21 @@ Shader "Custom/2D Water"
 			float3 compinedSplashes  = float3(0,0,0);//نهيئ متجه يجمع تأثيرات الاصطدامات كلها
 			
 			for(uint w = 0; w < SplashesArray.Length; w++){ //لكل اصطدام محتمل
-				//Get the distance of the splash hit position to this vertex
-				//نحسب المسافة من موقع الاصطدام إلى موقع الرأس الحالي
-				float dist = abs(SplashesArray[w].x - input.vertex.x);
 				//نضيف 1 إذا كانت قوة الاصطدام لها قيمة أكبر من الصفر
 				//step انظر مراجع الدالة  
 				n += 1 - step(0,SplashesArray[w].y);
 				//اجمع تأثير الاصطدام عبر محاكاة الموجتان
 				//أعطي المسافة وقوة الاصطدام والتأثير
-				compinedSplashes += Wave2DSplash(_WaveSplash,input.vertex,dist,SplashesArray[w].y);
-				compinedSplashes += Wave2DSplash(_WaveSplashB,input.vertex,dist,SplashesArray[w].y);
+				compinedSplashes += Wave2DSplash(_WaveSplash,input.vertex,SplashesArray[w]);
+				//يمكن إضافة موجات أخرى هنا
+				//compinedSplashes += Wave2DSplash(_WaveSplashB,input.vertex,SplashesArray[w]);
 			}
 			//بما أننا هيئناه بصفر، نطرح 1 منه إذا كان أصبح من 1 
 			n -= (1 - step(0,n));
 			//احسب متوسط جميع الاصطدامات
 			compinedSplashes *= 1/n;
+			//وضع حد لأقصى ارتفاع أو هبوط للموجة
+			compinedSplashes.y = clamp(compinedSplashes.y,-_WaveSplash.z,_WaveSplash.z);
 			//اجمع موقع متوسط تأثير الاصطدامات إلى موقع الرأس الحالي
 			input.vertex.xyz += compinedSplashes;
 				

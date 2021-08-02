@@ -64,7 +64,7 @@ public class WaterSplash : MonoBehaviour
         public float splashEffect;
         public float startTime;
         public float period;
-        public bool started, doReverse;
+        public bool started, doReverse, shift;
         public float startValue, targetValue;
     }
 
@@ -85,6 +85,19 @@ public class WaterSplash : MonoBehaviour
                 float currVal = Mathf.Lerp(splashInfo.startValue, splashInfo.targetValue, t);
                 ///Set the effect strength
                 splashesVector[s].y = currVal;
+                //For the new model:
+                //We increment our custom timer.
+                splashesVector[s].w = splashesVector[s].w + Time.deltaTime;
+                //In this model we shift the wave manually in both directions
+                //If we have started shifting
+                if(splashInfo.shift){
+                    //If we aren't stopping the wave yet (i.e. we just started the shift)
+                    if(!splashInfo.doReverse)
+                        splashesVector[s].z = Mathf.Lerp(0,.5f,t);//We gradually shift the wave across half the distance (specified in the shader)
+                    else//If we are stopping the wave
+                        splashesVector[s].z = Mathf.Lerp(.5f,1f,t);//Shift to the full distance
+                    
+                }
                 //Update the array in the material
                 MaterialPropertyBlock materialPropertyBlock = new MaterialPropertyBlock();
                 materialPropertyBlock.SetVectorArray(splashesVectorArrayName, splashesVector);
@@ -94,18 +107,35 @@ public class WaterSplash : MonoBehaviour
                     //Settle the wave
                     if (!splashInfo.doReverse)
                     {
-                        //Set the current values, time, effech strength, and period
-                        splashInfo.startTime = Time.time;
-                        splashInfo.startValue = splashInfo.targetValue;
-                        splashInfo.targetValue = 0;
-                        splashInfo.period = splashInfo.period / hitEffectTimePercentage * (1 - hitEffectTimePercentage);
-                        splashInfo.doReverse = true;
+                        //We start shifting the wave in both directions, while keeping the wave strong
+                        if(!splashInfo.shift){
+                            splashInfo.shift=true;
+                            //Use current time
+                            splashInfo.startTime = Time.time;
+                            //Use half the period
+                            //(Note: this formula calculates the remaining period after the first stage, but it could be precalculated and stored)
+                            splashInfo.period = 0.5f * splashInfo.period * (1 - hitEffectTimePercentage) / hitEffectTimePercentage;
+                            //Keep the wave strong (same value)
+                            splashInfo.startValue = splashInfo.targetValue;
+                        }
+                        //Here we stop the wave
+                        else{
+                            //Set the time and reverse the startValue
+                            splashInfo.startTime = Time.time;
+                            splashInfo.startValue = splashInfo.targetValue;
+                            //Stop the wave by making the effect 0
+                            splashInfo.targetValue = 0;
+                            //We don't need to recalculate the period in this new model
+                            //splashInfo.period = splashInfo.period / hitEffectTimePercentage * (1 - hitEffectTimePercentage);
+                            splashInfo.doReverse = true;
+                        }
                     }
                     else
                     {
-                        //Splash ended
+                        //Wave finished. Reset the values.
                         splashInfo.started = false;
                         splashInfo.doReverse = false;
+                        splashInfo.shift = false;
                     }
                 }
             }

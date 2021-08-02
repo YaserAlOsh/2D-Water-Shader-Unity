@@ -65,7 +65,7 @@ public class WaterSplash : MonoBehaviour
         public float splashEffect;
         public float startTime;
         public float period;
-        public bool started, doReverse;
+        public bool started, doReverse, move;
         public float startValue, targetValue;
     }
 
@@ -86,27 +86,57 @@ public class WaterSplash : MonoBehaviour
                 float currVal = Mathf.Lerp(splashInfo.startValue, splashInfo.targetValue, t);
                 //نعين قيمة التأثير
                 splashesVector[s].y = currVal;
+                //نزيد عداد الزمن الخاص
+                splashesVector[s].w = splashesVector[s].w + Time.deltaTime;
+                //في هذا النموذج نقوم بإزاحة الموجة إلى الجهتين يدويا
+                //إذا بدأنا بالتحريك أو الإزاحة:
+                if(splashInfo.move){
+                    //إذا لم نبدأ بتهدئة الموجة بعد (انظر الكود الأسفل)
+                    if(!splashInfo.doReverse)
+                        splashesVector[s].z = Mathf.Lerp(0,.5f,t);//نزيح الموجة تدريجيًا إلى منتصف المسافة (تحدد داخل الشيدر)
+                    else//في حال بدأنا بتهدئة أو إيقاف الموجة
+                        splashesVector[s].z = Mathf.Lerp(.5f,1f,t);//نزيحها إلى آخر المسافة
+                    
+                }
                 // Materialتحديث المصفوفة الموجودة في الـ
                 MaterialPropertyBlock materialPropertyBlock = new MaterialPropertyBlock();
                 materialPropertyBlock.SetVectorArray(splashesVectorArrayName, splashesVector);
                 waterPlane.SetPropertyBlock(materialPropertyBlock);
                 if (t >= 1)
                 {
-                    //إعادة استقرار الموجة
+                    //انتهاء المرحلة الأولى
                     if (!splashInfo.doReverse)
                     {
-                        //تحديد المتغيرات الحالية من الزمن وقيمة التأثير الحالية والمدة
-                        splashInfo.startTime = Time.time;
-                        splashInfo.startValue = splashInfo.targetValue;
-                        splashInfo.targetValue = 0;
-                        splashInfo.period = splashInfo.period / hitEffectTimePercentage * (1 - hitEffectTimePercentage);
-                        splashInfo.doReverse = true;
+                        //نبدأ مرحلة تحريك الموجة في الاتجاهين
+                        //نبقي على استقرار الموجة
+                        if(!splashInfo.move){
+                            splashInfo.move=true;
+                            //نستخدم الزمن الحالي
+                            splashInfo.startTime = Time.time;
+                            //نستخدم نصف المدة المحددة
+                            //(ملاحظة: المعادلة هذه تحسب الزمن المتبقي بعد انتهاء المرحلة الأولى . يمكن حساب و حفظ قيمته مسبقا بدلا من حسابه هنا)
+                            splashInfo.period = 0.5f * splashInfo.period * (1 - hitEffectTimePercentage) / hitEffectTimePercentage;
+                            //لا نريد أي تغيير في قوة الموجة في هذه المرحلة
+                            splashInfo.startValue = splashInfo.targetValue;
+                        }
+                        //هنا نوقف الموجة.
+                        else{
+                            //تحديد المتغيرات الحالية من الزمن وقيمة التأثير الحالية والمدة
+                            splashInfo.startTime = Time.time;
+                            splashInfo.startValue = splashInfo.targetValue;
+                            //نوقف الموجة عبر جعل قوة تأثيرها 0
+                            splashInfo.targetValue = 0;
+                            //لا حاجة لإعادة حساب الزمن المتبقي في النموذج الجديد
+                            //splashInfo.period = splashInfo.period / hitEffectTimePercentage * (1 - hitEffectTimePercentage);
+                            splashInfo.doReverse = true;
+                        }
                     }
                     else
                     {
-                        //إنهاء الموجة بعد استقرارها
+                        //نعيد تعيين المتغيرات بعد انتهاء الموجة
                         splashInfo.started = false;
                         splashInfo.doReverse = false;
+                        splashInfo.move = false;
                     }
                 }
             }
@@ -153,6 +183,11 @@ public class WaterSplash : MonoBehaviour
         splashInfo.period = resultantHitTime * hitEffectTimePercentage;
         //تعيين موقع تأثير التموج الأصلي
         splashesVector[currentEmptyIndex].x = xAxis;
+        //للنموذج الجديد:
+        //مدى تمدد الموجة الحالي (أو إزاحتها عن الموقع الأصلي للاصطدام)
+        splashesVector[currentEmptyIndex].z = 0;
+        //الزمن الحالي. نبدأ بالصفر دائما ليبدأ شكل الموجة في ارتفاع
+        splashesVector[currentEmptyIndex].w = 0;
         // Materialتحديث المصفوفة الموجودة في الـ
         MaterialPropertyBlock materialPropertyBlock = new MaterialPropertyBlock();
         materialPropertyBlock.SetVectorArray(splashesVectorArrayName, splashesVector);

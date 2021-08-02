@@ -9,8 +9,7 @@
 	_WaveA("Wave Properties (ength, Speed, Steepness)",Vector) = (1,1,1)
 	_WaveB("Wave Properties",Vector) = (1,1,1)	
 	_WaveC("Wave Properties",Vector) = (1,1,1)
-	_WaveSplash("Wave Splash (Length, Speed, Steepness)",Vector) = (1,1,1)
-	_WaveSplashB("Wave Splash B (",Vector) = (1,1,1)
+	_WaveSplash("Wave Splash (Frequency, Speed, Amplitude, Distance)",Vector) = (1,1,1)
 	_hitEffectSpread("Hit Spread (0.001 means maximum spread)", Range(0.001,1)) = 0.25 
     }
     SubShader
@@ -85,15 +84,43 @@
 
 			return float3(0,_point.y,0);
 		}
-		float3 Wave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
-				
-			float offset = _point.x;
+		//Old model for the wave splash effect
+		float3 OldWave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
+			//Everything here is like the previous function
 			float frequency = 2 * PI / waveProp.x; //x is waveLength
-			float factor = frequency * (offset  - waveProp.y * _Time.y);//y is waveSpeed
+			float factor = frequency * (_point.x  - waveProp.y * _Time.y);//y is waveSpeed
 			float amplitude = waveProp.z / frequency;//Steepness over frequency
+			//To calculate the splashEffect at this particular point, we divide the effect strength by the cubic distance
+			//The effect strength is in the range [0,1], so to get a result that is in the same range we add 1 to the distance
+			//We also multiplay the distance by a spread factor, which specifies how spread the hit effect is
 			float splashEffect = abs(hitFactor) / (_hitEffectSpread * (dist  *dist *dist) + 1);
+			//We multiply the effect by the amplitude and the sin factor
 			_point.y = splashEffect * amplitude * sin(factor);//z is Steepness
 
+			return float3(0,_point.y,0);
+		}
+		//This is a new model for teh splash wave effect
+		//Please see this to understand the wave equation: https://www.desmos.com/calculator/iy2tnqjesg
+		float3 Wave2DSplash(float4 waveProp, float3 _point,float4 hitProp){
+			//Amplitude
+			float amplitude = waveProp.z;
+			float dist = abs(hitProp.x - _point.x);
+			//We use a custom timer to make sure it starts at 0
+			float time = hitProp.w;
+			float waveDist = hitProp.z * waveProp.w;//How much distance has the wave crossed: shift * dist
+			float shiftedDist = dist - waveDist;
+			float cosValue = cos(shiftedDist*waveProp.x  -  waveProp.y * time);
+				
+			//First wave:
+			_point.y =  amplitude * cosValue //You can multiply by cosValue again here to get a wave without depth (no holes)
+				* hitProp.y / (_hitEffectSpread * shiftedDist * shiftedDist + 1);
+			//Compute the distance assuming the left direction
+			shiftedDist = dist + waveDist;
+			cosValue = cos(shiftedDist*waveProp.x +  waveProp.y * time);
+			//Add Second wave
+			_point.y += amplitude * cosValue //You can multiply by cosValue again here to get a wave without depth (no holes)
+					* hitProp.y / (_hitEffectSpread * shiftedDist * shiftedDist + 1);
+			_point.y /= 2;//Divide the resulting amplitude by 2, since we are summing two waves of amplitude A.
 			return float3(0,_point.y,0);
 		}
 
@@ -119,18 +146,19 @@
 			float n = 1;//Count of splashes, used to average them. Initialize to 1 to avoid dividing by 0.
 			float3 compinedSplashes  = float3(0,0,0);//Init splashes combined
 			for(uint w = 0; w < SplashesArray.Length; w++){ //For each possible splash
-				//Get the distance of the splash hit position to this vertex
-				float dist = abs(SplashesArray[w].x - input.vertex.x);
 				//Add 1 if the splash hit effect(strength) value is greater than 0. See step() documentation for details
 				n += 1 - step(0,SplashesArray[w].y);
 				//Add splashes from Waves A and B. Provide the distance and the splash hit effect(strength)
-				compinedSplashes += Wave2DSplash(_WaveSplash,input.vertex,dist,SplashesArray[w].y);
-				compinedSplashes += Wave2DSplash(_WaveSplashB,input.vertex,dist,SplashesArray[w].y);
+				compinedSplashes += Wave2DSplash(_WaveSplash,input.vertex,SplashesArray[w]);
+				//You can add more waves here:
+				//compinedSplashes += Wave2DSplash(_WaveSplashB,input.vertex,SplashesArray[w]);
 			}
 			//Since we initialied it to 1, we need to subtract 1 from it in case it became greater than 1
 			n -= (1 - step(0,n));
 			//Average all the splashes
 			compinedSplashes *= 1/n;
+			//Cap the maximum height and depth
+			compinedSplashes.y = clamp(compinedSplashes.y,-_WaveSplash.z,_WaveSplash.z);
 			//Add the splashes positions to the current vertex
 			input.vertex.xyz += compinedSplashes;
 			//From object space to clip space. See rendering pipelines for details
