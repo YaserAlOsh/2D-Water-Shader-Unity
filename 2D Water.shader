@@ -95,7 +95,7 @@ Shader "Custom/2D Water"
 			//نضرب الارتفاع بدالة الجيب وبالقيمة العشوائية
 			_point.y = randomNum * amplitude * sin(factor);
 			
-			return float3(0,_point.y,0);
+			return float3(0,0,_point.y);
 		}
 		//هذه دالة قديمة لحساب الموجة عند الاصطدام
 		float3 OldWave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
@@ -112,7 +112,7 @@ Shader "Custom/2D Water"
 			//نضرب قيمة التأثير بالارتفاع وبدالة الجيب
 			_point.y = splashEffect * amplitude * sin(factor);//z is Steepness
 
-			return float3(0,_point.y,0);
+			return float3(0,0,_point.y);
 		}
 		//سنستخدم نموذج أفضل لتأثير الاصطدام
 		//انظر الرابط الآتي لفهم آلية عمل النموذج  https://www.desmos.com/calculator/cmn5i7veni
@@ -141,7 +141,7 @@ Shader "Custom/2D Water"
 			_point.y += amplitude * cosValue //يمكن الضرب بقيمة جيب التمام مرة أخرى للحصول على موجة بدون هبوط (أو حفر)
 					* hitProp.y / (_hitEffectSpread * shiftedDist * shiftedDist + 1);
 			_point.y /= 2;//نقسم ارتفاع الموجة على 2. لأننا نقوم بجمع موجتين من الارتفاع نفسه. وهكذا نحصل على الارتفاع الأصلي
-			return float3(0,_point.y,0);
+			return float3(0,0,_point.y);
 		}
 
 		vertexOutput vert(vertexInput input)

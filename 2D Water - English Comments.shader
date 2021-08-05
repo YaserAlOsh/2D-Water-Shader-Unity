@@ -82,7 +82,7 @@
 
 			_point.y = randomNum * amplitude * sin(factor);//z is Steepness
 
-			return float3(0,_point.y,0);
+			return float3(0,0,_point.y);
 		}
 		//Old model for the wave splash effect
 		float3 OldWave2DSplash(float3 waveProp, float3 _point,float dist,float hitFactor){
@@ -97,7 +97,7 @@
 			//We multiply the effect by the amplitude and the sin factor
 			_point.y = splashEffect * amplitude * sin(factor);//z is Steepness
 
-			return float3(0,_point.y,0);
+			return float3(0,0,_point.y);
 		}
 		//This is a new model for teh splash wave effect
 		//Please see this to understand the wave equation: https://www.desmos.com/calculator/iy2tnqjesg
@@ -121,7 +121,7 @@
 			_point.y += amplitude * cosValue //You can multiply by cosValue again here to get a wave without depth (no holes)
 					* hitProp.y / (_hitEffectSpread * shiftedDist * shiftedDist + 1);
 			_point.y /= 2;//Divide the resulting amplitude by 2, since we are summing two waves of amplitude A.
-			return float3(0,_point.y,0);
+			return float3(0,0,_point.y);
 		}
 
 		vertexOutput vert(vertexInput input)
